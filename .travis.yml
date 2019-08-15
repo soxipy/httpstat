@@ -38,3 +38,14 @@ script:
   - ./httpstat golang.org:443/dl
   - ./httpstat https://http2.akamai.com/
   - ./httpstat -H Host:\ www.google.com https://$(dig +short www.google.com | head -1):443/
+
+deploy:
+  before_deploy: mv httpstat httpstat.$TRAVIS_OS_NAME
+  provider: releases
+  api_key:
+    secure: YrwdjglSK4d7fU9fe31OkRDcX/vWWLpZPrYpy/44e+mkfkoNpJ5mCh8hh+B8bvtV+dXbU3dhWKpLZm+sc/JVo5ZMYeCRWGC8n5ukQE2ylvmPZzKTISZ1QKsTBgXcj18aLoMusG7ZoOCrvAV6HM2K5uUVI/DQ1ZtbIFx13QJtpdyFGW6xol0Gv9aoMiw6SYyFqlTesIvK2oLC70OGmAQWOnacOMttXy7tjJjTCS7ogxCdwRYHXjPWSUHMVR/4Men9i4We0/IGNKnw7dpRPdnEtJ58ZiIA2Zt8Z4wLyu2TixwFtR3jimW/1TAD9cw8w0dHOaPAeCQKKAdnOHrGBqxVTUZDOOpHveFzqFBN/qkCTFBgmBL4KiJuH0nZo593XPFGKYP9vqaehndJXHSUFDHtzDApL0OfN8buzwJ0JZ3OyEwb2mBEg7YaaCCpowkGjcEw9pD2cWi3AH4GSAM42Xfm+HScbaLzvrUSZAIZ2Sg2+cN62ZMSXups1qFU+yF7Oed0iB0EY67qC2xU/O1dihozyzE4ZpNiiL3wBco8kU6qQbBrmM2if5J0kISqAVp3fqAKj7nyQU7jukKYAWpu0y8keyrtfCcQsnNjfoIcARrgA9w5HVBLqbHkPgxfejjmj0BXgiL0CkzeXtDavRTx1E4qRtcmFjoUMuYvynUkGChybvM=
+  file:
+    - httpstat.$TRAVIS_OS_NAME
+  skip_cleanup: true
+  on:
+    tags: true
