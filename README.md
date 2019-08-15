@@ -1,5 +1,7 @@
 # httpstat [![Build Status](https://api.travis-ci.org/soxipy/httpstat.svg?branch=master)](https://travis-ci.org/soxipy/httpstat)
 
+Many thanks to Dave Cheney and to all who contribute!
+
 ![httpstat screenshot](./screenshot.png)
 
 ## Installation
@@ -13,12 +15,12 @@ go get github.com/soxipy/httpstat
 ## Usage
 
 ```sh
-httpstat example.com
+httpstat example.com [another.url ...]
 ```
 
 ## Features
 
-- Windows/BSD/Linux supported.
+- MacOS/Windows/BSD/Linux supported.
 - HTTP and HTTPS are supported, for self signed certificates use `-k`.
 - Skip timing the body of a response with `-I`.
 - Follow 30x redirects with `-L`.

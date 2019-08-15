@@ -62,6 +62,7 @@ var (
 	clientCertFile  string
 	fourOnly        bool
 	sixOnly         bool
+	verbose         bool
 
 	// number of redirects followed
 	redirectsFollowed int
@@ -80,10 +81,11 @@ func init() {
 	flag.Var(&httpHeaders, "H", "set HTTP header; repeatable: -H 'Accept: ...' -H 'Range: ...'")
 	flag.BoolVar(&saveOutput, "O", false, "save body as remote filename")
 	flag.StringVar(&outputFile, "o", "", "output file for body")
-	flag.BoolVar(&showVersion, "v", false, "print version number")
+	flag.BoolVar(&showVersion, "V", false, "print version number")
 	flag.StringVar(&clientCertFile, "E", "", "client cert file for tls config")
 	flag.BoolVar(&fourOnly, "4", false, "resolve IPv4 addresses only")
 	flag.BoolVar(&sixOnly, "6", false, "resolve IPv6 addresses only")
+	flag.BoolVar(&verbose, "v", false, "be verbose")
 
 	flag.Usage = usage
 }
@@ -122,7 +124,7 @@ func main() {
 	}
 
 	args := flag.Args()
-	if len(args) != 1 {
+	if len(args) < 1 {
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -135,9 +137,10 @@ func main() {
 		httpMethod = "HEAD"
 	}
 
-	url := parseURL(args[0])
-
-	visit(url)
+	for _, k := range args {
+		url := parseURL(k)
+		visit(url)
+	}
 }
 
 // readClientCert - helper function to read client certificate
@@ -238,7 +241,9 @@ func visit(url *url.URL) {
 			}
 			t2 = time.Now()
 
-			printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
+			if verbose {
+				printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
+			}
 		},
 		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
 		GotFirstResponseByte: func() { t4 = time.Now() },
@@ -309,62 +314,66 @@ func visit(url *url.URL) {
 	}
 
 	// print status line and headers
-	printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+	if verbose {
+		printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
 
-	names := make([]string, 0, len(resp.Header))
-	for k := range resp.Header {
-		names = append(names, k)
-	}
-	sort.Sort(headers(names))
-	for _, k := range names {
-		printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
-	}
+		names := make([]string, 0, len(resp.Header))
+		for k := range resp.Header {
+			names = append(names, k)
+		}
+		sort.Sort(headers(names))
+		for _, k := range names {
+			printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
+		}
 
-	if bodyMsg != "" {
-		printf("\n%s\n", bodyMsg)
-	}
+		if bodyMsg != "" {
+			printf("\n%s\n", bodyMsg)
+		}
 
-	fmta := func(d time.Duration) string {
-		return color.CyanString("%7dms", int(d/time.Millisecond))
-	}
+		fmta := func(d time.Duration) string {
+			return color.CyanString("%7dms", int(d/time.Millisecond))
+		}
 
-	fmtb := func(d time.Duration) string {
-		return color.CyanString("%-9s", strconv.Itoa(int(d/time.Millisecond))+"ms")
-	}
+		fmtb := func(d time.Duration) string {
+			return color.CyanString("%-9s", strconv.Itoa(int(d/time.Millisecond))+"ms")
+		}
 
-	colorize := func(s string) string {
-		v := strings.Split(s, "\n")
-		v[0] = grayscale(16)(v[0])
-		return strings.Join(v, "\n")
-	}
+		colorize := func(s string) string {
+			v := strings.Split(s, "\n")
+			v[0] = grayscale(16)(v[0])
+			return strings.Join(v, "\n")
+		}
 
-	fmt.Println()
+		fmt.Println()
 
-	switch url.Scheme {
-	case "https":
-		printf(colorize(httpsTemplate),
-			fmta(t1.Sub(t0)), // dns lookup
-			fmta(t2.Sub(t1)), // tcp connection
-			fmta(t6.Sub(t5)), // tls handshake
-			fmta(t4.Sub(t3)), // server processing
-			fmta(t7.Sub(t4)), // content transfer
-			fmtb(t1.Sub(t0)), // namelookup
-			fmtb(t2.Sub(t0)), // connect
-			fmtb(t3.Sub(t0)), // pretransfer
-			fmtb(t4.Sub(t0)), // starttransfer
-			fmtb(t7.Sub(t0)), // total
-		)
-	case "http":
-		printf(colorize(httpTemplate),
-			fmta(t1.Sub(t0)), // dns lookup
-			fmta(t3.Sub(t1)), // tcp connection
-			fmta(t4.Sub(t3)), // server processing
-			fmta(t7.Sub(t4)), // content transfer
-			fmtb(t1.Sub(t0)), // namelookup
-			fmtb(t3.Sub(t0)), // connect
-			fmtb(t4.Sub(t0)), // starttransfer
-			fmtb(t7.Sub(t0)), // total
-		)
+		switch url.Scheme {
+		case "https":
+			printf(colorize(httpsTemplate),
+				fmta(t1.Sub(t0)), // dns lookup
+				fmta(t2.Sub(t1)), // tcp connection
+				fmta(t6.Sub(t5)), // tls handshake
+				fmta(t4.Sub(t3)), // server processing
+				fmta(t7.Sub(t4)), // content transfer
+				fmtb(t1.Sub(t0)), // namelookup
+				fmtb(t2.Sub(t0)), // connect
+				fmtb(t3.Sub(t0)), // pretransfer
+				fmtb(t4.Sub(t0)), // starttransfer
+				fmtb(t7.Sub(t0)), // total
+			)
+		case "http":
+			printf(colorize(httpTemplate),
+				fmta(t1.Sub(t0)), // dns lookup
+				fmta(t3.Sub(t1)), // tcp connection
+				fmta(t4.Sub(t3)), // server processing
+				fmta(t7.Sub(t4)), // content transfer
+				fmtb(t1.Sub(t0)), // namelookup
+				fmtb(t3.Sub(t0)), // connect
+				fmtb(t4.Sub(t0)), // starttransfer
+				fmtb(t7.Sub(t0)), // total
+			)
+		}
+	} else {
+		printf("%s: %-9s\n", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
 	}
 
 	if followRedirects && isRedirect(resp) {
