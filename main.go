@@ -209,7 +209,7 @@ func headerKeyValue(h string) (string, string) {
 func dialContext(network string) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, _, addr string) (net.Conn, error) {
 		return (&net.Dialer{
-			Timeout:   30 * time.Second,
+			Timeout:   2 * time.Second,
 			KeepAlive: 30 * time.Second,
 			DualStack: false,
 		}).DialContext(ctx, network, addr)
@@ -251,8 +251,9 @@ func visit(url *url.URL) {
 		Proxy:                 http.ProxyFromEnvironment,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
+		TLSHandshakeTimeout:   2 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 1 * time.Second,
 	}
 
 	switch {
@@ -290,6 +291,7 @@ func visit(url *url.URL) {
 			// manually if required.
 			return http.ErrUseLastResponse
 		},
+		Timeout: 3 * time.Second, // Overall request timeout with interrupting of reading of the Response.Body
 	}
 
 	resp, err := client.Do(req)
