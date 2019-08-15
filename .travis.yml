@@ -46,4 +46,10 @@ deploy:
   api_key: $GITHUB_UPLOAD_TOKEN
   file: httpstat.$TRAVIS_OS_NAME
   skip_cleanup: true
-  overwrite: true
+  on:
+    tags: true
+
+notifications:
+  email:
+    on_success: never
+    on_failure: always
