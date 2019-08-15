@@ -225,7 +225,9 @@ func visit(url *url.URL) {
 	req := newRequest(httpMethod, url, postBody)
 
 	var t0, t1, t2, t3, t4, t5, t6 time.Time
+	var Err error
 
+	ctx, cancel := context.WithCancel(context.TODO())
 	trace := &httptrace.ClientTrace{
 		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
 		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
@@ -236,10 +238,12 @@ func visit(url *url.URL) {
 			}
 		},
 		ConnectDone: func(net, addr string, err error) {
-			if err != nil {
-				log.Fatalf("unable to connect to host %v: %v", addr, err)
-			}
 			t2 = time.Now()
+
+			if err != nil {
+				Err = err
+				cancel()
+			}
 
 			if verbose {
 				printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
@@ -250,7 +254,7 @@ func visit(url *url.URL) {
 		TLSHandshakeStart:    func() { t5 = time.Now() },
 		TLSHandshakeDone:     func(_ tls.ConnectionState, _ error) { t6 = time.Now() },
 	}
-	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
+	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
 	tr := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
@@ -283,9 +287,9 @@ func visit(url *url.URL) {
 
 		// Because we create a custom TLSClientConfig, we have to opt-in to HTTP/2.
 		// See https://github.com/golang/go/issues/14275
-		err = http2.ConfigureTransport(tr)
-		if err != nil {
-			log.Fatalf("failed to prepare transport for HTTP/2: %v", err)
+		Err = http2.ConfigureTransport(tr)
+		if Err != nil {
+			cancel()
 		}
 	}
 
@@ -299,14 +303,15 @@ func visit(url *url.URL) {
 		Timeout: 3 * time.Second, // Overall request timeout with interrupting of reading of the Response.Body
 	}
 
+	var bodyMsg string
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatalf("failed to read response: %v", err)
+		Err = fmt.Errorf("+%v+: %v", Err, err)
+	} else {
+
+		bodyMsg = readResponseBody(req, resp)
+		resp.Body.Close()
 	}
-
-	bodyMsg := readResponseBody(req, resp)
-	resp.Body.Close()
-
 	t7 := time.Now() // after read body
 	if t0.IsZero() {
 		// we skipped DNS
@@ -315,19 +320,21 @@ func visit(url *url.URL) {
 
 	// print status line and headers
 	if verbose {
-		printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+		// printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
 
-		names := make([]string, 0, len(resp.Header))
-		for k := range resp.Header {
-			names = append(names, k)
-		}
-		sort.Sort(headers(names))
-		for _, k := range names {
-			printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
-		}
+		if resp != nil {
+			names := make([]string, 0, len(resp.Header))
+			for k := range resp.Header {
+				names = append(names, k)
+			}
+			sort.Sort(headers(names))
+			for _, k := range names {
+				printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
+			}
 
-		if bodyMsg != "" {
-			printf("\n%s\n", bodyMsg)
+			if bodyMsg != "" {
+				printf("\n%s\n", bodyMsg)
+			}
 		}
 
 		fmta := func(d time.Duration) string {
@@ -370,10 +377,12 @@ func visit(url *url.URL) {
 				fmtb(t3.Sub(t0)), // connect
 				fmtb(t4.Sub(t0)), // starttransfer
 				fmtb(t7.Sub(t0)), // total
+				"\n",
 			)
 		}
+		printf("Err: %v", Err)
 	} else {
-		printf("%s: %-9s\n", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
+		printf("%s: %-9s, Err=%v\n", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"), Err)
 	}
 
 	if followRedirects && isRedirect(resp) {
