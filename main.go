@@ -238,10 +238,7 @@ func visit(url *url.URL) {
 		// Need to track this with ConnectTry to cancel correctly.
 		ConnectStart: func(_, _ string) {
 			ConnectTry++
-			if t1.IsZero() {
-				// connecting to IP
-				t1 = time.Now()
-			}
+			t1 = time.Now()
 		},
 		ConnectDone: func(net, addr string, err error) {
 			ConnectTry--
@@ -323,10 +320,6 @@ func visit(url *url.URL) {
 	}
 
 	t7 := time.Now() // after read body
-	if t0.IsZero() {
-		// we skipped DNS
-		t0 = t1
-	}
 
 	// print status line and headers
 	if verbose {
@@ -389,12 +382,16 @@ func visit(url *url.URL) {
 				fmtb(t7.Sub(t0)), // total
 			)
 		}
-		if Err != nil {
-			printf(color.RedString("\nERROR: %v\n", Err))
-		}
+
 	} else {
-		printf("%s: %-9s, Err=%v\n", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"), Err)
+		printf("%s: %-9s", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
 	}
+
+	if Err != nil {
+		printf(color.RedString(" ERROR: %v", Err))
+	}
+
+	fmt.Println()
 
 	if followRedirects && isRedirect(resp) {
 		loc, err := resp.Location()
