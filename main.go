@@ -397,7 +397,7 @@ func visit(url *url.URL) {
 
 	fmt.Println()
 
-	if followRedirects && isRedirect(resp) {
+	if Err == nil && followRedirects && isRedirect(resp) {
 		loc, err := resp.Location()
 		if err != nil {
 			if err == http.ErrNoLocation {
