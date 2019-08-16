@@ -310,12 +310,16 @@ func visit(url *url.URL) {
 		Timeout: 3 * time.Second, // Overall request timeout with interrupting of reading of the Response.Body
 	}
 
-	var bodyMsg string
+	var bodyMsg, Status string
+	var ProtoMajor, ProtoMinor int
 	resp, err := client.Do(req)
 	if err != nil {
 		Err = append(Err, err)
 	} else {
 		bodyMsg = readResponseBody(req, resp)
+		ProtoMajor = resp.ProtoMajor
+		ProtoMinor = resp.ProtoMinor
+		Status = resp.Status
 		resp.Body.Close()
 	}
 
@@ -323,7 +327,7 @@ func visit(url *url.URL) {
 
 	// print status line and headers
 	if verbose {
-		// printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+		printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", ProtoMajor, ProtoMinor, Status))
 
 		if resp != nil {
 			names := make([]string, 0, len(resp.Header))
