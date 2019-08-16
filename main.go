@@ -224,25 +224,34 @@ func dialContext(network string) func(ctx context.Context, network, addr string)
 func visit(url *url.URL) {
 	req := newRequest(httpMethod, url, postBody)
 
-	var t0, t1, t2, t3, t4, t5, t6 time.Time
-	var Err error
+	t0 := time.Now()
+	var t1, t2, t3, t4, t5, t6 time.Time = t0, t0, t0, t0, t0, t0
+	var Err []error
+	var ConnectTry int
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	trace := &httptrace.ClientTrace{
 		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
 		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
+		// If net.Dialer.DualStack ("Happy Eyeballs") support is enabled,
+		// this and the next hook may be called multiple times.
+		// Need to track this with ConnectTry to cancel correctly.
 		ConnectStart: func(_, _ string) {
+			ConnectTry++
 			if t1.IsZero() {
 				// connecting to IP
 				t1 = time.Now()
 			}
 		},
 		ConnectDone: func(net, addr string, err error) {
+			ConnectTry--
 			t2 = time.Now()
 
 			if err != nil {
-				Err = err
-				cancel()
+				Err = append(Err, err)
+				if ConnectTry == 0 {
+					cancel()
+				}
 			}
 
 			if verbose {
@@ -287,8 +296,9 @@ func visit(url *url.URL) {
 
 		// Because we create a custom TLSClientConfig, we have to opt-in to HTTP/2.
 		// See https://github.com/golang/go/issues/14275
-		Err = http2.ConfigureTransport(tr)
-		if Err != nil {
+		err = http2.ConfigureTransport(tr)
+		if err != nil {
+			Err = append(Err, err)
 			cancel()
 		}
 	}
@@ -306,12 +316,12 @@ func visit(url *url.URL) {
 	var bodyMsg string
 	resp, err := client.Do(req)
 	if err != nil {
-		Err = fmt.Errorf("+%v+: %v", Err, err)
+		Err = append(Err, err)
 	} else {
-
 		bodyMsg = readResponseBody(req, resp)
 		resp.Body.Close()
 	}
+
 	t7 := time.Now() // after read body
 	if t0.IsZero() {
 		// we skipped DNS
@@ -377,10 +387,11 @@ func visit(url *url.URL) {
 				fmtb(t3.Sub(t0)), // connect
 				fmtb(t4.Sub(t0)), // starttransfer
 				fmtb(t7.Sub(t0)), // total
-				"\n",
 			)
 		}
-		printf("Err: %v", Err)
+		if Err != nil {
+			printf(color.RedString("\nERROR: %v\n", Err))
+		}
 	} else {
 		printf("%s: %-9s, Err=%v\n", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"), Err)
 	}
