@@ -120,7 +120,7 @@ func main() {
 
 	if fourOnly && sixOnly {
 		fmt.Fprintf(os.Stderr, "%s: Only one of -4 and -6 may be specified\n", os.Args[0])
-		os.Exit(-1)
+		os.Exit(1)
 	}
 
 	args := flag.Args()
@@ -130,8 +130,13 @@ func main() {
 	}
 
 	if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-		fmt.Fprintf(os.Stderr, "must supply post body using -d when POST or PUT is used")
+		fmt.Fprintf(os.Stderr, "must supply post body using -d when POST or PUT is used\n")
 		os.Exit(3)
+	}
+
+	if (saveOutput || outputFile != "") && len(args) > 1 {
+		fmt.Fprintf(os.Stderr, "body saving is supported for single request only\n")
+		os.Exit(4)
 	}
 
 	if onlyHeader {
@@ -448,7 +453,8 @@ func createBody(body string) io.Reader {
 		filename := body[1:]
 		f, err := os.Open(filename)
 		if err != nil {
-			log.Fatalf("failed to open data file %s: %v", filename, err)
+			fmt.Fprintf(os.Stderr, "failed to open data file %s: %v\n", filename, err)
+			os.Exit(5)
 		}
 		return f
 	}
@@ -500,13 +506,15 @@ func readResponseBody(req *http.Request, resp *http.Response) string {
 			}
 
 			if filename == "/" {
-				log.Fatalf("No remote filename; specify output filename with -o to save response body")
+				fmt.Fprintf(os.Stderr, "no remote filename; specify output filename with -o to save response body\n")
+				os.Exit(7)
 			}
 		}
 
 		f, err := os.Create(filename)
 		if err != nil {
-			log.Fatalf("unable to create file %s: %v", filename, err)
+			fmt.Fprintf(os.Stderr, "unable to create file %s: %v\n", filename, err)
+			os.Exit(7)
 		}
 		defer f.Close()
 		w = f
@@ -514,7 +522,8 @@ func readResponseBody(req *http.Request, resp *http.Response) string {
 	}
 
 	if _, err := io.Copy(w, resp.Body); err != nil && w != ioutil.Discard {
-		log.Fatalf("failed to read response body: %v", err)
+		fmt.Fprintf(os.Stderr, "failed to read response body: %v\n", err)
+		os.Exit(7)
 	}
 
 	return msg
