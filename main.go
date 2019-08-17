@@ -225,7 +225,7 @@ func visit(url *url.URL) {
 	req := newRequest(httpMethod, url, postBody)
 
 	t0 := time.Now()
-	var t1, t2, t3, t4, t5, t6 time.Time = t0, t0, t0, t0, t0, t0
+	t1, t2, t3, t4, t5, t6 := t0, t0, t0, t0, t0, t0
 	var Err []error
 	var ConnectTry int
 
@@ -392,7 +392,12 @@ func visit(url *url.URL) {
 	}
 
 	if Err != nil {
-		printf(color.RedString(" ERROR: %v", Err))
+		printf(color.RedString("%sERROR: %v", func() string {
+			if verbose {
+				return ""
+			}
+			return " "
+		}(), Err))
 	}
 
 	fmt.Println()
