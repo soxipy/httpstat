@@ -130,7 +130,8 @@ func main() {
 	}
 
 	if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
-		log.Fatal("must supply post body using -d when POST or PUT is used")
+		fmt.Fprintf(os.Stderr, "must supply post body using -d when POST or PUT is used")
+		os.Exit(3)
 	}
 
 	if onlyHeader {
@@ -138,7 +139,11 @@ func main() {
 	}
 
 	for _, k := range args {
-		url := parseURL(k)
+		url, err := parseURL(k)
+		if err != nil {
+			printf(color.RedString("%s ERROR: %q\n", k, err))
+			continue
+		}
 		visit(url)
 	}
 }
@@ -182,14 +187,14 @@ func readClientCert(filename string) []tls.Certificate {
 	return []tls.Certificate{cert}
 }
 
-func parseURL(uri string) *url.URL {
+func parseURL(uri string) (*url.URL, error) {
 	if !strings.Contains(uri, "://") && !strings.HasPrefix(uri, "//") {
 		uri = "//" + uri
 	}
 
 	url, err := url.Parse(uri)
 	if err != nil {
-		log.Fatalf("could not parse url %q: %v", uri, err)
+		return nil, fmt.Errorf("could not parse url %q: %v", uri, err)
 	}
 
 	if url.Scheme == "" {
@@ -198,7 +203,7 @@ func parseURL(uri string) *url.URL {
 			url.Scheme += "s"
 		}
 	}
-	return url
+	return url, nil
 }
 
 func headerKeyValue(h string) (string, string) {
@@ -222,7 +227,12 @@ func dialContext(network string) func(ctx context.Context, network, addr string)
 // visit visits a url and times the interaction.
 // If the response is a 30x, visit follows the redirect.
 func visit(url *url.URL) {
-	req := newRequest(httpMethod, url, postBody)
+
+	req, err := newRequest(httpMethod, url, postBody)
+	if err != nil {
+		printf(color.RedString("ERROR: %v\n", err))
+		return
+	}
 
 	t0 := time.Now()
 	t1, t2, t3, t4, t5, t6 := t0, t0, t0, t0, t0, t0
@@ -388,7 +398,7 @@ func visit(url *url.URL) {
 		}
 
 	} else {
-		printf("%s: %-9s", req.URL, color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
+		printf("%s: %-9s", url.String(), color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
 	}
 
 	if Err != nil {
@@ -405,16 +415,15 @@ func visit(url *url.URL) {
 	if Err == nil && followRedirects && isRedirect(resp) {
 		loc, err := resp.Location()
 		if err != nil {
-			if err == http.ErrNoLocation {
-				// 30x but no Location to follow, give up.
-				return
-			}
-			log.Fatalf("unable to follow redirect: %v", err)
+			Err = append(Err, err)
+			cancel()
+			return
 		}
 
-		redirectsFollowed++
-		if redirectsFollowed > maxRedirects {
-			log.Fatalf("maximum number of redirects (%d) followed", maxRedirects)
+		if redirectsFollowed++; redirectsFollowed > maxRedirects {
+			Err = append(Err, fmt.Errorf("maximum number of redirects (%d) followed", maxRedirects))
+			cancel()
+			return
 		}
 
 		visit(loc)
@@ -425,10 +434,10 @@ func isRedirect(resp *http.Response) bool {
 	return resp.StatusCode > 299 && resp.StatusCode < 400
 }
 
-func newRequest(method string, url *url.URL, body string) *http.Request {
+func newRequest(method string, url *url.URL, body string) (*http.Request, error) {
 	req, err := http.NewRequest(method, url.String(), createBody(body))
 	if err != nil {
-		log.Fatalf("unable to create request: %v", err)
+		return nil, fmt.Errorf("unable to create request: %v", err)
 	}
 	for _, h := range httpHeaders {
 		k, v := headerKeyValue(h)
@@ -438,7 +447,7 @@ func newRequest(method string, url *url.URL, body string) *http.Request {
 		}
 		req.Header.Add(k, v)
 	}
-	return req
+	return req, nil
 }
 
 func createBody(body string) io.Reader {
