@@ -141,7 +141,7 @@ func main() {
 	for _, k := range args {
 		url, err := parseURL(k)
 		if err != nil {
-			printf(color.RedString("%s ERROR: %q\n", k, err))
+			printf(color.RedString("%s ERROR: %v\n", k, err))
 			continue
 		}
 		visit(url)
@@ -204,14 +204,6 @@ func parseURL(uri string) (*url.URL, error) {
 		}
 	}
 	return url, nil
-}
-
-func headerKeyValue(h string) (string, string) {
-	i := strings.Index(h, ":")
-	if i == -1 {
-		log.Fatalf("Header '%s' has invalid format, missing ':'", h)
-	}
-	return strings.TrimRight(h[:i], " "), strings.TrimLeft(h[i:], " :")
 }
 
 func dialContext(network string) func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -440,7 +432,8 @@ func newRequest(method string, url *url.URL, body string) (*http.Request, error)
 		return nil, fmt.Errorf("unable to create request: %v", err)
 	}
 	for _, h := range httpHeaders {
-		k, v := headerKeyValue(h)
+		s := strings.Split(h, ":")
+		k, v := strings.TrimRight(s[0], " "), strings.TrimLeft(s[1], " ")
 		if strings.EqualFold(k, "host") {
 			req.Host = v
 			continue
