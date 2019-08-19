@@ -332,6 +332,17 @@ func visit(url *url.URL) {
 
 	t7 := time.Now() // after read body
 
+	dnsLookup := t1.Sub(t0)
+	tcpConnection := t2.Sub(t1)
+	tlsHandshake := t6.Sub(t5)
+	serverProcessing := t4.Sub(t3)
+	contentTransfer := t7.Sub(t4)
+	namelookup := t7.Sub(t4)
+	connect := t2.Sub(t0)
+	pretransfer := t3.Sub(t0)
+	starttransfer := t4.Sub(t0)
+	total := t7.Sub(t0)
+
 	// print status line and headers
 	if verbose {
 		printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", ProtoMajor, ProtoMinor, Status))
@@ -370,32 +381,45 @@ func visit(url *url.URL) {
 		switch url.Scheme {
 		case "https":
 			printf(colorize(httpsTemplate),
-				fmta(t1.Sub(t0)), // dns lookup
-				fmta(t2.Sub(t1)), // tcp connection
-				fmta(t6.Sub(t5)), // tls handshake
-				fmta(t4.Sub(t3)), // server processing
-				fmta(t7.Sub(t4)), // content transfer
-				fmtb(t1.Sub(t0)), // namelookup
-				fmtb(t2.Sub(t0)), // connect
-				fmtb(t3.Sub(t0)), // pretransfer
-				fmtb(t4.Sub(t0)), // starttransfer
-				fmtb(t7.Sub(t0)), // total
+				fmta(dnsLookup),        // dns lookup
+				fmta(tcpConnection),    // tcp connection
+				fmta(tlsHandshake),     // tls handshake
+				fmta(serverProcessing), // server processing
+				fmta(contentTransfer),  // content transfer
+				fmtb(namelookup),       // namelookup
+				fmtb(connect),          // connect
+				fmtb(pretransfer),      // pretransfer
+				fmtb(starttransfer),    // starttransfer
+				fmtb(total),            // total
 			)
 		case "http":
 			printf(colorize(httpTemplate),
-				fmta(t1.Sub(t0)), // dns lookup
-				fmta(t3.Sub(t1)), // tcp connection
-				fmta(t4.Sub(t3)), // server processing
-				fmta(t7.Sub(t4)), // content transfer
-				fmtb(t1.Sub(t0)), // namelookup
-				fmtb(t3.Sub(t0)), // connect
-				fmtb(t4.Sub(t0)), // starttransfer
-				fmtb(t7.Sub(t0)), // total
+				fmta(dnsLookup),        // dns lookup
+				fmta(tcpConnection),    // tcp connection
+				fmta(serverProcessing), // server processing
+				fmta(contentTransfer),  // content transfer
+				fmtb(namelookup),       // namelookup
+				fmtb(connect),          // connect
+				fmtb(starttransfer),    // starttransfer
+				fmtb(total),            // total
 			)
 		}
 
 	} else {
-		printf("%s: %-9s", url.String(), color.CyanString(strconv.Itoa(int(t7.Sub(t0)/time.Millisecond))+"ms"))
+
+		fmta := func(d time.Duration) string {
+			return color.CyanString("%4d", int(d/time.Millisecond))
+		}
+
+		printf("%30s: %s %s %s %s %s %s",
+			url.String(),
+			fmta(dnsLookup),        // dns lookup
+			fmta(tcpConnection),    // tcp connection
+			fmta(tlsHandshake),     // tls handshake
+			fmta(serverProcessing), // server processing
+			fmta(contentTransfer),  // content transfer
+			fmta(total),
+		)
 	}
 
 	if Err != nil {
