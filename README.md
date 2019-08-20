@@ -2,6 +2,8 @@
 
 Many thanks to Dave Cheney and to all who contribute!
 
+It is under heavy reconstruction now, come in a week or two to look at complete version and release
+
 ![httpstat screenshot](./screenshot.png)
 
 ## Installation
