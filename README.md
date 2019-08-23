@@ -1,4 +1,4 @@
-# httpstat [![Build Status](https://api.travis-ci.org/soxipy/httpstat.svg?branch=master)](https://travis-ci.org/soxipy/httpstat)
+# httpstat [![Build Status](https://api.travis-ci.org/soxipy/httpstat.svg?branch=master)](https://travis-ci.org/soxipy/httpstat) [![Go Report Card](https://goreportcard.com/badge/github.com/soxipy/httpstat)](https://goreportcard.com/report/github.com/soxipy/httpstat)
 
 Many thanks to Dave Cheney and to all who contribute!
 
