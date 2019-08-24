@@ -146,7 +146,12 @@ func main() {
 	for _, k := range args {
 		url, err := parseURL(k)
 		if err != nil {
-			printf(color.RedString("%s ERROR: %v\n", k, err))
+			if verbose {
+				printf("%s: ", k)
+			} else {
+				printf("%30s: ", k)
+			}
+			printf(color.RedString("ERROR: %v\n", err))
 			continue
 		}
 		visit(url)
@@ -227,6 +232,11 @@ func visit(url *url.URL) {
 
 	req, err := newRequest(httpMethod, url, postBody)
 	if err != nil {
+		if verbose {
+			printf("%s: ", url.String())
+		} else {
+			printf("%30s: ", url.String())
+		}
 		printf(color.RedString("ERROR: %v\n", err))
 		return
 	}
