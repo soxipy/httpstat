@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/tls"
 	"encoding/pem"
@@ -144,18 +145,56 @@ func main() {
 	}
 
 	for _, k := range args {
-		url, err := parseURL(k)
-		if err != nil {
-			if verbose {
-				printf("%s: ", k)
-			} else {
-				printf("%30s: ", k)
+		if strings.HasPrefix(k, "@") {
+			words, err := scanWords(k[1:])
+			if err != nil {
+				reportError(k, err)
+				continue
 			}
-			printf(color.RedString("ERROR: %v\n", err))
-			continue
+			for _, word := range words {
+				parseAndVisit(word)
+			}
+
+		} else {
+			parseAndVisit(k)
 		}
-		visit(url)
 	}
+}
+
+func reportError(url string, err error) {
+	if verbose {
+		printf("%s: ", url)
+	} else {
+		printf("%30s: ", url)
+	}
+	printf(color.RedString("ERROR: %v\n", err))
+}
+
+func parseAndVisit(arg string) {
+	url, err := parseURL(arg)
+	if err != nil {
+		reportError(arg, err)
+		return
+	}
+	visit(url)
+}
+
+func scanWords(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanWords)
+	var words []string
+	for scanner.Scan() {
+		words = append(words, scanner.Text())
+	}
+
+	return words, nil
 }
 
 // readClientCert - helper function to read client certificate
@@ -232,12 +271,7 @@ func visit(url *url.URL) {
 
 	req, err := newRequest(httpMethod, url, postBody)
 	if err != nil {
-		if verbose {
-			printf("%s: ", url.String())
-		} else {
-			printf("%30s: ", url.String())
-		}
-		printf(color.RedString("ERROR: %v\n", err))
+		reportError(url.String(), err)
 		return
 	}
 
