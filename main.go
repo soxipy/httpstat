@@ -232,24 +232,34 @@ func visit(url *url.URL) {
 	}
 
 	t0 := time.Now()
-	t1, t2, t3, t4, t5, t6 := t0, t0, t0, t0, t0, t0
+	t1, t2, t3, t4, t5, t6, t7, t8 := t0, t0, t0, t0, t0, t0, t0, t0
 	var Err []error
 	var ConnectTry int
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	trace := &httptrace.ClientTrace{
-		DNSStart: func(_ httptrace.DNSStartInfo) { t0 = time.Now() },
-		DNSDone:  func(_ httptrace.DNSDoneInfo) { t1 = time.Now() },
+		DNSStart: func(_ httptrace.DNSStartInfo) {
+			t0 = time.Now()
+			t1, t2, t3, t4, t5, t6, t7, t8 = t0, t0, t0, t0, t0, t0, t0, t0
+		},
+		DNSDone: func(_ httptrace.DNSDoneInfo) {
+			t1 = time.Now()
+			t2, t3, t4, t5, t6, t7, t8 = t1, t1, t1, t1, t1, t1, t1
+		},
 		// If net.Dialer.DualStack ("Happy Eyeballs") support is enabled,
 		// this and the next hook may be called multiple times.
 		// Need to track this with ConnectTry to cancel correctly.
 		ConnectStart: func(_, _ string) {
+			if ConnectTry == 0 {
+				t2 = time.Now()
+				t3, t4, t5, t6, t7, t8 = t2, t2, t2, t2, t2, t2
+			}
 			ConnectTry++
-			t1 = time.Now()
 		},
 		ConnectDone: func(net, addr string, err error) {
 			ConnectTry--
-			t2 = time.Now()
+			t3 = time.Now()
+			t4, t5, t6, t7, t8 = t3, t3, t3, t3, t3
 
 			if err != nil {
 				Err = append(Err, err)
@@ -262,10 +272,22 @@ func visit(url *url.URL) {
 				printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
 			}
 		},
-		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
-		GotFirstResponseByte: func() { t4 = time.Now() },
-		TLSHandshakeStart:    func() { t5 = time.Now() },
-		TLSHandshakeDone:     func(_ tls.ConnectionState, _ error) { t6 = time.Now() },
+		TLSHandshakeStart: func() {
+			t4 = time.Now()
+			t6, t7, t8 = t4, t4, t4
+		},
+		TLSHandshakeDone: func(_ tls.ConnectionState, _ error) {
+			t5 = time.Now()
+			t6, t7, t8 = t5, t5, t5
+		},
+		GotConn: func(_ httptrace.GotConnInfo) {
+			t6 = time.Now()
+			t7, t8 = t6, t6
+		},
+		GotFirstResponseByte: func() {
+			t7 = time.Now()
+			t8 = t7
+		},
 	}
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
@@ -330,18 +352,18 @@ func visit(url *url.URL) {
 		resp.Body.Close()
 	}
 
-	t7 := time.Now() // after read body
+	t8 = time.Now() // after read body
 
 	dnsLookup := t1.Sub(t0)
-	tcpConnection := t2.Sub(t1)
-	tlsHandshake := t6.Sub(t5)
-	serverProcessing := t4.Sub(t3)
-	contentTransfer := t7.Sub(t4)
-	namelookup := t7.Sub(t4)
-	connect := t2.Sub(t0)
-	pretransfer := t3.Sub(t0)
-	starttransfer := t4.Sub(t0)
-	total := t7.Sub(t0)
+	tcpConnection := t3.Sub(t2)
+	tlsHandshake := t5.Sub(t4)
+	serverProcessing := t7.Sub(t6)
+	contentTransfer := t8.Sub(t7)
+	namelookup := t1.Sub(t0)
+	connect := t3.Sub(t0)
+	pretransfer := t6.Sub(t0)
+	starttransfer := t7.Sub(t0)
+	total := t8.Sub(t0)
 
 	// print status line and headers
 	if verbose {
