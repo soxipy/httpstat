@@ -95,7 +95,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] URL1 URL2 @file1 URL3 @file2 ...\n\n", os.Args[0])
 	fmt.Fprintln(os.Stderr, "PARAMETERS:")
 	fmt.Fprintln(os.Stderr, "Any number of URLs and filename references in @filename form in any combination")
-	fmt.Fprintln(os.Stderr, "URLs in @file is a set of words delimited with whitespace characters, tabs and new lines.\n")
+	fmt.Fprintf(os.Stderr, "URLs in @file is a set of words delimited with whitespace characters, tabs and new lines.\n\n")
 	fmt.Fprintln(os.Stderr, "OPTIONS:")
 	flag.PrintDefaults()
 	fmt.Fprintln(os.Stderr, "ENVIRONMENT:")
