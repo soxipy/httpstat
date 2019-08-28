@@ -92,10 +92,12 @@ func init() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] URL\n\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] URL1 URL2 @file1 URL3 @file2 ...\n\n", os.Args[0])
+	fmt.Fprintln(os.Stderr, "PARAMETERS:")
+	fmt.Fprintln(os.Stderr, "Any number of URLs and filename references in @filename form in any combination")
+	fmt.Fprintln(os.Stderr, "URLs in @file is a set of words delimited with whitespace characters, tabs and new lines.\n")
 	fmt.Fprintln(os.Stderr, "OPTIONS:")
 	flag.PrintDefaults()
-	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "ENVIRONMENT:")
 	fmt.Fprintln(os.Stderr, "  HTTP_PROXY    proxy for HTTP requests; complete URL or HOST[:PORT]")
 	fmt.Fprintln(os.Stderr, "                used for HTTPS requests if HTTPS_PROXY undefined")

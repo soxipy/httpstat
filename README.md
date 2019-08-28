@@ -39,7 +39,7 @@ httpstat example.com another.url @file1 url1.com url2.com @file2 ...
 - The response body is usually discarded, you can use `-o filename` to save it to a file, or `-O` to save it to the file name suggested by the server.
 - HTTP/HTTPS proxies supported via the usual `HTTP_PROXY`/`HTTPS_PROXY` env vars (as well as lower case variants).
 - Supply your own client side certificate with `-E cert.pem`.
-- Pass any number of URLs including from @file.
+- Pass any number of URLs including from @file. URLs in file is a set of words delimited with whitespace characters, tabs and new lines.
 
 ## TODO
 
